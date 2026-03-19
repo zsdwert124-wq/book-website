@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เว็บไซต์ยืมหนังสือ (โหมดจำลอง)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Import Map -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.294.0"
+        }
+    }
+    </script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
+    
+    <style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .animate-badge { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    </style>
+</head>
+<body class="bg-slate-50 text-gray-900">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module" data-presets="react">
+        import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { LucideBookOpen, LucideDumbbell, LucideHistory, LucideLayoutDashboard, LucideSettings, LucideClipboardList, LucideLogOut, LucideUser, LucideSearch, LucideDatabase, Trash2 as LucideTrash, AlertTriangle, Save as LucideSave, Users as LucideUsers, UserX, UserCheck, Shield, ShieldAlert, ShieldCheck, FileJson, Upload, Download, FileText, Lock, CheckCircle, Bell } from 'lucide-react';
+
+        // --- Default Data (ข้อมูลเริ่มต้น) ---
+        const SPORTS_EQUIPMENT_DEFAULTS = [];
+
+        const BOOK_DEFAULTS = [
+            // --- หมวดแบบเรียน (Textbooks) ---
+            { id: 'b1', name: 'คณิตศาสตร์ ม.4 เล่ม 1', type: 'แบบเรียน', quantity: 30, available: 30, description: 'หนังสือเรียนรายวิชาพื้นฐานคณิตศาสตร์', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Math+M4' },
+            { id: 'b2', name: 'วิทยาศาสตร์กายภาพ', type: 'แบบเรียน', quantity: 30, available: 30, description: 'หนังสือเรียนรายวิชาพื้นฐานวิทยาศาสตร์', imageUrl: 'https://placehold.co/100x150/8B5CF6/ffffff?text=Science' },
+            { id: 'b3', name: 'พจนานุกรมไทย-อังกฤษ', type: 'อ้างอิง', quantity: 15, available: 15, description: 'ฉบับนักเรียน', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=Dictionary' },
+            { id: 'b6', name: 'ภาษาไทย ม.ปลาย', type: 'แบบเรียน', quantity: 25, available: 25, description: 'หลักภาษาและการใช้ภาษา', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=Thai+Lang' },
+            { id: 'b7', name: 'สังคมศึกษา ศาสนา และวัฒนธรรม', type: 'แบบเรียน', quantity: 40, available: 40, description: 'สาระการเรียนรู้พื้นฐาน', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Social' },
+            { id: 'b8', name: 'ชีววิทยา เล่ม 1', type: 'แบบเรียน', quantity: 20, available: 20, description: 'หนังสือเรียนรายวิชาเพิ่มเติม', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Biology' },
+            { id: 'b9', name: 'ฟิสิกส์ เล่ม 1', type: 'แบบเรียน', quantity: 20, available: 20, description: 'หนังสือเรียนรายวิชาเพิ่มเติม', imageUrl: 'https://placehold.co/100x150/6366F1/ffffff?text=Physics' },
+            { id: 'b10', name: 'เคมี เล่ม 1', type: 'แบบเรียน', quantity: 20, available: 20, description: 'หนังสือเรียนรายวิชาเพิ่มเติม', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=Chemistry' },
+            { id: 'b21', name: 'ภาษาอังกฤษ (Grammar)', type: 'แบบเรียน', quantity: 30, available: 30, description: 'สรุปไวยากรณ์ภาษาอังกฤษฉบับสมบูรณ์', imageUrl: 'https://placehold.co/100x150/60A5FA/ffffff?text=English' },
+            { id: 'b22', name: 'ประวัติศาสตร์ไทย', type: 'แบบเรียน', quantity: 25, available: 25, description: 'ระดับมัธยมศึกษาตอนปลาย', imageUrl: 'https://placehold.co/100x150/D97706/ffffff?text=History' },
+            { id: 'b43', name: 'คณิตศาสตร์ ม.5 เล่ม 1', type: 'แบบเรียน', quantity: 25, available: 25, description: 'ฟังก์ชันตรีโกณมิติและเวกเตอร์', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Math+M5' },
+            { id: 'b44', name: 'ภาษาจีนระดับต้น 1', type: 'แบบเรียน', quantity: 15, available: 15, description: 'เรียนรู้ตัวอักษรและบทสนทนาพื้นฐาน', imageUrl: 'https://placehold.co/100x150/DC2626/ffffff?text=Chinese' },
+            { id: 'b45', name: 'ภาษาเกาหลี 1', type: 'แบบเรียน', quantity: 15, available: 15, description: 'ไวยากรณ์และคำศัพท์เบื้องต้น', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Korean' },
+            { id: 'b46', name: 'ดาราศาสตร์และอวกาศ', type: 'แบบเรียน', quantity: 12, available: 12, description: 'ระบบสุริยะและดวงดาว', imageUrl: 'https://placehold.co/100x150/4C1D95/ffffff?text=Space' },
+            { id: 'b70', name: 'ฟิสิกส์ ม.5 เล่ม 3', type: 'แบบเรียน', quantity: 20, available: 20, description: 'ไฟฟ้าและแม่เหล็ก', imageUrl: 'https://placehold.co/100x150/6366F1/ffffff?text=Physics+M5' },
+            { id: 'b71', name: 'เคมี ม.5 เล่ม 3', type: 'แบบเรียน', quantity: 20, available: 20, description: 'อัตราการเกิดปฏิกิริยาเคมี', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=Chemistry+M5' },
+            { id: 'b72', name: 'ชีววิทยา ม.5 เล่ม 3', type: 'แบบเรียน', quantity: 20, available: 20, description: 'การสืบพันธุ์ของพืชดอก', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Biology+M5' },
+            { id: 'b73', name: 'คณิตศาสตร์ ม.6 แคลคูลัส', type: 'แบบเรียน', quantity: 25, available: 25, description: 'แคลคูลัสเบื้องต้น', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Calculus' },
+            { id: 'b74', name: 'ภาษาญี่ปุ่นเบื้องต้น (Minna no Nihongo)', type: 'แบบเรียน', quantity: 10, available: 10, description: 'เล่ม 1', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=Japanese' },
+            { id: 'b101', name: 'ศิลปะและทัศนศิลป์ ม.ปลาย', type: 'แบบเรียน', quantity: 20, available: 20, description: 'ประวัติศาสตร์ศิลป์และทฤษฎีสี', imageUrl: 'https://placehold.co/100x150/A855F7/ffffff?text=Art' },
+            { id: 'b102', name: 'ดนตรีนาฏศิลป์', type: 'แบบเรียน', quantity: 15, available: 15, description: 'ดนตรีไทยและสากล', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=Music' },
+            { id: 'b103', name: 'สุขศึกษาและพลศึกษา', type: 'แบบเรียน', quantity: 30, available: 30, description: 'การดูแลสุขภาพและการปฐมพยาบาล', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Health+Edu' },
+
+            // --- หมวดวรรณกรรม/นิยาย (Literature) ---
+            { id: 'b4', name: 'Harry Potter 1 (ศิลาอาถรรพ์)', type: 'วรรณกรรม', quantity: 5, available: 5, description: 'J.K. Rowling', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=HP+1' },
+            { id: 'b23', name: 'Harry Potter 2 (ห้องแห่งความลับ)', type: 'วรรณกรรม', quantity: 4, available: 4, description: 'J.K. Rowling', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=HP+2' },
+            { id: 'b24', name: 'Harry Potter 3 (นักโทษแห่งอัซคาบัน)', type: 'วรรณกรรม', quantity: 4, available: 4, description: 'J.K. Rowling', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=HP+3' },
+            { id: 'b47', name: 'Harry Potter 4 (ถ้วยอัคนี)', type: 'วรรณกรรม', quantity: 4, available: 4, description: 'J.K. Rowling', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=HP+4' },
+            { id: 'b48', name: 'Harry Potter 5 (ภาคีนกฟีนิกซ์)', type: 'วรรณกรรม', quantity: 3, available: 3, description: 'J.K. Rowling', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=HP+5' },
+            { id: 'b104', name: 'Harry Potter 6 (เจ้าชายเลือดผสม)', type: 'วรรณกรรม', quantity: 3, available: 3, description: 'J.K. Rowling', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=HP+6' },
+            { id: 'b105', name: 'Harry Potter 7 (เครื่องรางยมทูต)', type: 'วรรณกรรม', quantity: 3, available: 3, description: 'J.K. Rowling', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=HP+7' },
+            { id: 'b11', name: 'เจ้าชายน้อย (The Little Prince)', type: 'วรรณกรรม', quantity: 10, available: 10, description: 'วรรณกรรมเยาวชนคลาสสิก', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Little+Prince' },
+            { id: 'b12', name: 'สี่แผ่นดิน', type: 'วรรณกรรม', quantity: 5, available: 5, description: 'นวนิยายอิงประวัติศาสตร์ไทย โดย คึกฤทธิ์ ปราโมช', imageUrl: 'https://placehold.co/100x150/8B5CF6/ffffff?text=4+Reigns' },
+            { id: 'b25', name: 'ข้างหลังภาพ', type: 'วรรณกรรม', quantity: 6, available: 6, description: 'นิยายรักอมตะ โดย ศรีบูรพา', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=Behind+Painting' },
+            { id: 'b26', name: 'บุพเพสันนิวาส', type: 'วรรณกรรม', quantity: 8, available: 8, description: 'นวนิยายย้อนยุค โดย รอมแพง', imageUrl: 'https://placehold.co/100x150/F472B6/ffffff?text=Love+Destiny' },
+            { id: 'b27', name: 'The Lord of the Rings 1', type: 'วรรณกรรม', quantity: 3, available: 3, description: 'มหันตภัยแห่งแหวน', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=LOTR' },
+            { id: 'b28', name: 'Sherlock Holmes: คดีสีเลือด', type: 'วรรณกรรม', quantity: 5, available: 5, description: 'ปฐมบทแห่งยอดนักสืบ', imageUrl: 'https://placehold.co/100x150/6B7280/ffffff?text=Sherlock' },
+            { id: 'b29', name: 'เพอร์ซีย์ แจ็กสัน 1', type: 'วรรณกรรม', quantity: 4, available: 4, description: 'สายฟ้าที่หายไป', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Percy+Jackson' },
+            { id: 'b49', name: 'The Hunger Games 1', type: 'วรรณกรรม', quantity: 5, available: 5, description: 'เกมล่าชีวิต', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=Hunger+Games' },
+            { id: 'b50', name: 'Game of Thrones 1', type: 'วรรณกรรม', quantity: 3, available: 3, description: 'มหาศึกชิงบัลลังก์', imageUrl: 'https://placehold.co/100x150/374151/ffffff?text=GoT' },
+            { id: 'b51', name: 'นิทานเวตาล', type: 'วรรณกรรม', quantity: 6, available: 6, description: 'น.ม.ส.', imageUrl: 'https://placehold.co/100x150/8B5CF6/ffffff?text=Vetal' },
+            { id: 'b52', name: 'เพชรพระอุมา ตอน ไพรมหากาฬ', type: 'วรรณกรรม', quantity: 4, available: 4, description: 'พนมเทียน เล่ม 1', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Petch+Pra+Uma' },
+            { id: 'b53', name: 'The Chronicles of Narnia', type: 'วรรณกรรม', quantity: 3, available: 3, description: 'ตู้พิศวง', imageUrl: 'https://placehold.co/100x150/60A5FA/ffffff?text=Narnia' },
+            { id: 'b75', name: 'คู่กรรม', type: 'วรรณกรรม', quantity: 6, available: 6, description: 'ทมยันตี', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Khu+Kam' },
+            { id: 'b76', name: 'ทวิภพ', type: 'วรรณกรรม', quantity: 5, available: 5, description: 'ทมยันตี', imageUrl: 'https://placehold.co/100x150/8B5CF6/ffffff?text=Tawipob' },
+            { id: 'b77', name: 'ผู้ชนะสิบทิศ', type: 'วรรณกรรม', quantity: 4, available: 4, description: 'ยาขอบ', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=Winner+10' },
+            { id: 'b78', name: '1984', type: 'วรรณกรรม', quantity: 5, available: 5, description: 'George Orwell (แปลไทย)', imageUrl: 'https://placehold.co/100x150/374151/ffffff?text=1984' },
+            { id: 'b79', name: 'Animal Farm', type: 'วรรณกรรม', quantity: 5, available: 5, description: 'การเมืองเรื่องสรรพสัตว์', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Animal+Farm' },
+            { id: 'b106', name: 'The Great Gatsby', type: 'วรรณกรรม', quantity: 4, available: 4, description: 'F. Scott Fitzgerald', imageUrl: 'https://placehold.co/100x150/14B8A6/ffffff?text=Gatsby' },
+            { id: 'b107', name: 'To Kill a Mockingbird', type: 'วรรณกรรม', quantity: 5, available: 5, description: 'Harper Lee', imageUrl: 'https://placehold.co/100x150/6366F1/ffffff?text=Mockingbird' },
+            { id: 'b108', name: 'Pride and Prejudice', type: 'วรรณกรรม', quantity: 4, available: 4, description: 'Jane Austen', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=Pride' },
+
+            // --- หมวดประวัติศาสตร์ (History) ---
+            { id: 'b89', name: 'ประวัติศาสตร์ไทยร่วมสมัย', type: 'ประวัติศาสตร์', quantity: 5, available: 5, description: 'คริส เบเคอร์ และ ผาสุก พงษ์ไพจิตร', imageUrl: 'https://placehold.co/100x150/B45309/ffffff?text=Thai+History' },
+            { id: 'b90', name: 'Guns, Germs, and Steel', type: 'ประวัติศาสตร์', quantity: 4, available: 4, description: 'ปืน เชื้อโรค และเหล็กกล้า', imageUrl: 'https://placehold.co/100x150/78350F/ffffff?text=Guns+Germs' },
+            { id: 'b91', name: 'Silk Road', type: 'ประวัติศาสตร์', quantity: 3, available: 3, description: 'เส้นทางสายไหม', imageUrl: 'https://placehold.co/100x150/D97706/ffffff?text=Silk+Road' },
+            { id: 'b109', name: 'Homo Deus', type: 'ประวัติศาสตร์', quantity: 5, available: 5, description: 'ประวัติย่อของวันพรุ่งนี้', imageUrl: 'https://placehold.co/100x150/000000/ffffff?text=Homo+Deus' },
+            { id: 'b110', name: 'อยุธยา: ประวัติศาสตร์และการเมือง', type: 'ประวัติศาสตร์', quantity: 4, available: 4, description: 'เจาะลึกกรุงศรีอยุธยา', imageUrl: 'https://placehold.co/100x150/B45309/ffffff?text=Ayutthaya' },
+            { id: 'b111', name: 'สงครามโลกครั้งที่ 1 และ 2', type: 'ประวัติศาสตร์', quantity: 6, available: 6, description: 'ฉบับเข้าใจง่าย', imageUrl: 'https://placehold.co/100x150/4B5563/ffffff?text=World+War' },
+
+            // --- หมวดนิยายสืบสวน (Mystery) ---
+            { id: 'b92', name: 'คดีฆาตกรรมในบ้านสิบเหลี่ยม', type: 'นิยายสืบสวน', quantity: 6, available: 6, description: 'Ayatsuji Yukito', imageUrl: 'https://placehold.co/100x150/4B5563/ffffff?text=Decagon' },
+            { id: 'b93', name: 'รหัสลับดาวินชี (Da Vinci Code)', type: 'นิยายสืบสวน', quantity: 5, available: 5, description: 'Dan Brown', imageUrl: 'https://placehold.co/100x150/1F2937/ffffff?text=Da+Vinci' },
+            { id: 'b94', name: 'กาลิเลโอไขคดี (Detective Galileo)', type: 'นิยายสืบสวน', quantity: 5, available: 5, description: 'Higashino Keigo', imageUrl: 'https://placehold.co/100x150/374151/ffffff?text=Galileo' },
+            { id: 'b112', name: 'แล้วสอนว่าอย่าไว้ใจมนุษย์', type: 'นิยายสืบสวน', quantity: 5, available: 5, description: 'นิยายสืบสวนสอบสวนยอดนิยม', imageUrl: 'https://placehold.co/100x150/991B1B/ffffff?text=Mystery' },
+            { id: 'b113', name: 'And Then There Were None', type: 'นิยายสืบสวน', quantity: 4, available: 4, description: 'Agatha Christie', imageUrl: 'https://placehold.co/100x150/000000/ffffff?text=Agatha' },
+            { id: 'b114', name: 'กลลวงซ่อนตาย (The Devotion of Suspect X)', type: 'นิยายสืบสวน', quantity: 4, available: 4, description: 'Higashino Keigo', imageUrl: 'https://placehold.co/100x150/4B5563/ffffff?text=Suspect+X' },
+
+             // --- หมวดนิยายจีน (Chinese Novel) ---
+            { id: 'b95', name: 'ปรมาจารย์ลัทธิมาร เล่ม 1', type: 'นิยายจีน', quantity: 8, available: 8, description: 'Mo Xiang Tong Xiu', imageUrl: 'https://placehold.co/100x150/991B1B/ffffff?text=Grandmaster' },
+            { id: 'b96', name: 'สวรรค์ประทานพร เล่ม 1', type: 'นิยายจีน', quantity: 8, available: 8, description: 'Mo Xiang Tong Xiu', imageUrl: 'https://placehold.co/100x150/DC2626/ffffff?text=Heaven' },
+            { id: 'b97', name: 'ยุทธภพเนรมิต (The Smiling, Proud Wanderer)', type: 'นิยายจีน', quantity: 4, available: 4, description: 'กิมย้ง', imageUrl: 'https://placehold.co/100x150/7F1D1D/ffffff?text=Jin+Yong' },
+            { id: 'b115', name: 'มังกรหยก ภาค 1 เล่ม 1', type: 'นิยายจีน', quantity: 5, available: 5, description: 'กิมย้ง', imageUrl: 'https://placehold.co/100x150/065F46/ffffff?text=Condor' },
+            { id: 'b116', name: 'ดาบมังกรหยก เล่ม 1', type: 'นิยายจีน', quantity: 5, available: 5, description: 'กิมย้ง', imageUrl: 'https://placehold.co/100x150/B45309/ffffff?text=Dragon' },
+            { id: 'b117', name: 'อุ้ยเสี่ยวป้อ เล่ม 1', type: 'นิยายจีน', quantity: 4, available: 4, description: 'กิมย้ง', imageUrl: 'https://placehold.co/100x150/9CA3AF/ffffff?text=Wei' },
+
+            // --- หมวดสุขภาพ (Health) ---
+            { id: 'b98', name: 'Why We Sleep', type: 'สุขภาพ', quantity: 6, available: 6, description: 'นอนเปลี่ยนชีวิต', imageUrl: 'https://placehold.co/100x150/047857/ffffff?text=Sleep' },
+            { id: 'b99', name: 'The Body: A Guide for Occupants', type: 'สุขภาพ', quantity: 5, available: 5, description: 'ร่างกาย: คู่มือการใช้งาน', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Body' },
+             { id: 'b100', name: 'Food: A Love Story', type: 'สุขภาพ', quantity: 4, available: 4, description: 'เรื่องเล่าของอาหาร', imageUrl: 'https://placehold.co/100x150/065F46/ffffff?text=Food' },
+            { id: 'b118', name: 'กินหลอกสมอง (Brain Maker)', type: 'สุขภาพ', quantity: 5, available: 5, description: 'อาหารที่ช่วยบำรุงสมอง', imageUrl: 'https://placehold.co/100x150/FCD34D/ffffff?text=Brain' },
+            { id: 'b119', name: 'The Vaccine Book', type: 'สุขภาพ', quantity: 3, available: 3, description: 'คู่มือวัคซีนสำหรับประชาชน', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Vaccine' },
+            { id: 'b120', name: 'คู่มือออกกำลังกายเพื่อสุขภาพ', type: 'สุขภาพ', quantity: 6, available: 6, description: 'Fit & Firm ได้ที่บ้าน', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Fitness' },
+
+            // --- หมวดเทคโนโลยี (Technology) ---
+            { id: 'b13', name: 'พื้นฐาน Python (ฉบับสมบูรณ์)', type: 'เทคโนโลยี', quantity: 10, available: 10, description: 'สำหรับผู้เริ่มต้น เขียนโปรแกรมง่ายๆ', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Python' },
+            { id: 'b14', name: 'รู้ทัน AI และ ChatGPT', type: 'เทคโนโลยี', quantity: 10, available: 10, description: 'การประยุกต์ใช้ปัญญาประดิษฐ์', imageUrl: 'https://placehold.co/100x150/14B8A6/ffffff?text=AI+Book' },
+            { id: 'b30', name: 'HTML & CSS & JavaScript', type: 'เทคโนโลยี', quantity: 8, available: 8, description: 'คู่มือพัฒนาเว็บไซต์ Modern Web', imageUrl: 'https://placehold.co/100x150/F97316/ffffff?text=Web+Dev' },
+            { id: 'b31', name: 'Data Science 101', type: 'เทคโนโลยี', quantity: 5, available: 5, description: 'วิทยาศาสตร์ข้อมูลเบื้องต้น', imageUrl: 'https://placehold.co/100x150/8B5CF6/ffffff?text=Data+Science' },
+            { id: 'b32', name: 'Premiere Pro ตัดต่อขั้นเทพ', type: 'เทคโนโลยี', quantity: 6, available: 6, description: 'เทคนิคการตัดต่อวิดีโอ', imageUrl: 'https://placehold.co/100x150/6366F1/ffffff?text=Video+Edit' },
+            { id: 'b54', name: 'UX/UI Design พื้นฐาน', type: 'เทคโนโลยี', quantity: 5, available: 5, description: 'ออกแบบแอปให้โดนใจผู้ใช้', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=UX+UI' },
+            { id: 'b55', name: 'Excel ขั้นสูง (Pivot & Macro)', type: 'เทคโนโลยี', quantity: 8, available: 8, description: 'จัดการข้อมูลอย่างมืออาชีพ', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Excel' },
+            { id: 'b56', name: 'Cybersecurity เบื้องต้น', type: 'เทคโนโลยี', quantity: 4, available: 4, description: 'รู้ทันภัยคุกคามไซเบอร์', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Security' },
+            { id: 'b57', name: 'Digital Marketing 2024', type: 'เทคโนโลยี', quantity: 6, available: 6, description: 'การตลาดออนไลน์ยุคใหม่', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Marketing' },
+            { id: 'b121', name: 'เรียนรู้ React.js ฉบับปฏิบัติ', type: 'เทคโนโลยี', quantity: 5, available: 5, description: 'สร้างเว็บแอปพลิเคชันสมัยใหม่', imageUrl: 'https://placehold.co/100x150/61DAFB/ffffff?text=React' },
+            { id: 'b122', name: 'Flutter: เขียนแอปเดียวได้ทั้ง iOS/Android', type: 'เทคโนโลยี', quantity: 5, available: 5, description: 'Mobile App Development', imageUrl: 'https://placehold.co/100x150/02569B/ffffff?text=Flutter' },
+            { id: 'b123', name: 'Machine Learning for Beginners', type: 'เทคโนโลยี', quantity: 4, available: 4, description: 'เรียนรู้ระบบการเรียนรู้ของเครื่อง', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=ML' },
+
+            // --- หมวดพัฒนาตนเอง (Self-Help) ---
+            { id: 'b15', name: 'Atomic Habits', type: 'พัฒนาตนเอง', quantity: 10, available: 10, description: 'เปลี่ยนนิสัยเล็กๆ ให้ชีวิตดีขึ้น', imageUrl: 'https://placehold.co/100x150/F97316/ffffff?text=Atomic+Habits' },
+            { id: 'b16', name: 'พ่อรวยสอนลูก', type: 'พัฒนาตนเอง', quantity: 10, available: 10, description: 'บทเรียนการเงินที่โรงเรียนไม่สอน', imageUrl: 'https://placehold.co/100x150/8B5CF6/ffffff?text=Rich+Dad' },
+            { id: 'b33', name: 'The Psychology of Money', type: 'พัฒนาตนเอง', quantity: 8, available: 8, description: 'จิตวิทยาว่าด้วยเงิน', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Psych+Money' },
+            { id: 'b34', name: 'เซเปียนส์ (Sapiens)', type: 'พัฒนาตนเอง', quantity: 5, available: 5, description: 'ประวัติย่อมนุษยชาติ', imageUrl: 'https://placehold.co/100x150/FCD34D/ffffff?text=Sapiens' },
+            { id: 'b35', name: 'คิดแบบยิว ทำแบบญี่ปุ่น', type: 'พัฒนาตนเอง', quantity: 7, available: 7, description: 'เคล็ดลับความสำเร็จ', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Success' },
+            { id: 'b36', name: 'Good Vibes, Good Life', type: 'พัฒนาตนเอง', quantity: 6, available: 6, description: 'ใช้คลื่นพลังบวกดึงดูดสิ่งดีๆ', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=Good+Vibes' },
+            { id: 'b58', name: 'The Power of Now', type: 'พัฒนาตนเอง', quantity: 5, available: 5, description: 'พลังแห่งจิตปัจจุบัน', imageUrl: 'https://placehold.co/100x150/60A5FA/ffffff?text=Power+Now' },
+            { id: 'b59', name: 'Thinking, Fast and Slow', type: 'พัฒนาตนเอง', quantity: 4, available: 4, description: 'คิด เร็วและช้า', imageUrl: 'https://placehold.co/100x150/D97706/ffffff?text=Thinking' },
+            { id: 'b60', name: 'วิธีชนะมิตรและจูงใจคน', type: 'พัฒนาตนเอง', quantity: 8, available: 8, description: 'Dale Carnegie', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Win+Friends' },
+            { id: 'b61', name: 'The 5 AM Club', type: 'พัฒนาตนเอง', quantity: 5, available: 5, description: 'เปลี่ยนชีวิตด้วยการตื่นเช้า', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=5AM+Club' },
+            { id: 'b80', name: 'Marketing 5.0', type: 'พัฒนาตนเอง', quantity: 5, available: 5, description: 'Philip Kotler', imageUrl: 'https://placehold.co/100x150/DC2626/ffffff?text=Marketing+5' },
+            { id: 'b81', name: 'Zero to One', type: 'พัฒนาตนเอง', quantity: 5, available: 5, description: 'Peter Thiel', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Zero+to+One' },
+            { id: 'b82', name: 'Designing Your Life', type: 'พัฒนาตนเอง', quantity: 6, available: 6, description: 'คู่มือออกแบบชีวิต', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=Design+Life' },
+            { id: 'b124', name: 'Mindset: ใช้ความคิดเอาชนะโชคชะตา', type: 'พัฒนาตนเอง', quantity: 6, available: 6, description: 'Carol S. Dweck', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Mindset' },
+            { id: 'b125', name: 'Grit: ความทรหด', type: 'พัฒนาตนเอง', quantity: 5, available: 5, description: 'Angela Duckworth', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Grit' },
+
+            // --- หมวดการ์ตูนความรู้/มังงะ (Edutainment/Manga) ---
+            { id: 'b17', name: 'ลาฟลอร่า โรงเรียนป่วนก๊วนเจ้าหญิง', type: 'การ์ตูนความรู้', quantity: 10, available: 10, description: 'เรียนรู้วัฒนธรรมนานาชาติ', imageUrl: 'https://placehold.co/100x150/EC4899/ffffff?text=LaFlora' },
+            { id: 'b18', name: 'เอาชีวิตรอดในมหาสมุทร', type: 'การ์ตูนความรู้', quantity: 10, available: 10, description: 'วิทยาศาสตร์ทางทะเล', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Survival' },
+            { id: 'b37', name: 'ยอดนักสืบจิ๋วโคนัน เล่ม 1', type: 'การ์ตูนความรู้', quantity: 5, available: 5, description: 'ฝึกทักษะการสังเกต', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Conan' },
+            { id: 'b38', name: 'One Piece เล่ม 1', type: 'การ์ตูนความรู้', quantity: 5, available: 5, description: 'การ์ตูนผจญภัยและมิตรภาพ', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=One+Piece' },
+            { id: 'b39', name: 'โดราเอมอน ชุดวิทยาศาสตร์', type: 'การ์ตูนความรู้', quantity: 8, available: 8, description: 'ความรู้รอบตัวกับโดราเอมอน', imageUrl: 'https://placehold.co/100x150/60A5FA/ffffff?text=Doraemon' },
+            { id: 'b40', name: 'Plants vs Zombies: ร่างกายมนุษย์', type: 'การ์ตูนความรู้', quantity: 8, available: 8, description: 'ศึกพืชปะทะซอมบี้', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=PvZ' },
+            { id: 'b62', name: 'ครอบครัวตึ๋งหนืด: ตอน เศรษฐี', type: 'การ์ตูนความรู้', quantity: 8, available: 8, description: 'สอนเรื่องการออมเงิน', imageUrl: 'https://placehold.co/100x150/FCD34D/ffffff?text=Economy' },
+            { id: 'b63', name: 'Why? เอกภพ', type: 'การ์ตูนความรู้', quantity: 6, available: 6, description: 'สำรวจจักรวาล', imageUrl: 'https://placehold.co/100x150/4C1D95/ffffff?text=Why+Space' },
+            { id: 'b64', name: 'แก๊งป่วนก๊วนวิทยาศาสตร์', type: 'การ์ตูนความรู้', quantity: 5, available: 5, description: 'ทดลองวิทย์สุดฮา', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Science+Gang' },
+            { id: 'b83', name: 'มหาศึกคนชนเทพ', type: 'การ์ตูนความรู้', quantity: 5, available: 5, description: 'Record of Ragnarok', imageUrl: 'https://placehold.co/100x150/374151/ffffff?text=Ragnarok' },
+            { id: 'b84', name: 'ดาบพิฆาตอสูร เล่ม 1', type: 'การ์ตูนความรู้', quantity: 6, available: 6, description: 'Demon Slayer', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Demon+Slayer' },
+            { id: 'b85', name: 'Spy x Family เล่ม 1', type: 'การ์ตูนความรู้', quantity: 6, available: 6, description: 'ครอบครัวสายลับ', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Spy+Family' },
+            { id: 'b126', name: 'Shin-chan (ชินจังจอมแก่น) ชุดความรู้', type: 'การ์ตูนความรู้', quantity: 6, available: 6, description: 'เรียนรู้เรื่องรอบตัวกับชินจัง', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=Shin-chan' },
+
+            // --- หมวดทั่วไป/งานอดิเรก (General) ---
+            { id: 'b5', name: 'สารานุกรมไทยสำหรับเยาวชน', type: 'อ้างอิง', quantity: 5, available: 5, description: 'เล่มที่ 1 ความรู้ทั่วไป', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Encyclopedia' },
+            { id: 'b19', name: 'คู่มือเที่ยวทั่วไทย', type: 'ทั่วไป', quantity: 5, available: 5, description: 'แนะนำสถานที่ท่องเที่ยว 77 จังหวัด', imageUrl: 'https://placehold.co/100x150/F59E0B/ffffff?text=Travel' },
+            { id: 'b20', name: 'เมนูคลีน ทำง่ายได้ที่บ้าน', type: 'ทั่วไป', quantity: 6, available: 6, description: 'สูตรอาหารเพื่อสุขภาพ', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Clean+Food' },
+            { id: 'b41', name: 'แผนที่โลกฉบับสมบูรณ์', type: 'อ้างอิง', quantity: 3, available: 3, description: 'แผนที่ภูมิศาสตร์และรัฐกิจ', imageUrl: 'https://placehold.co/100x150/6366F1/ffffff?text=Atlas' },
+            { id: 'b42', name: 'ภาษาอังกฤษเพื่อการสื่อสาร', type: 'ทั่วไป', quantity: 10, available: 10, description: 'บทสนทนาในชีวิตประจำวัน', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Easy+Eng' },
+            { id: 'b65', name: 'คู่มือการทำกาแฟ (Barista)', type: 'ทั่วไป', quantity: 4, available: 4, description: 'ศาสตร์แห่งการชงกาแฟ', imageUrl: 'https://placehold.co/100x150/78350F/ffffff?text=Coffee' },
+            { id: 'b66', name: 'หัดเล่นกีตาร์เบื้องต้น', type: 'ทั่วไป', quantity: 5, available: 5, description: 'พร้อมคอร์ดเพลงฮิต', imageUrl: 'https://placehold.co/100x150/D97706/ffffff?text=Guitar' },
+            { id: 'b67', name: 'เทคนิคการถ่ายภาพสวย', type: 'ทั่วไป', quantity: 4, available: 4, description: 'จัดองค์ประกอบภาพแบบมือโปร', imageUrl: 'https://placehold.co/100x150/6B7280/ffffff?text=Photo' },
+            { id: 'b68', name: 'การจัดสวนในบ้าน', type: 'ทั่วไป', quantity: 5, available: 5, description: 'เพิ่มพื้นที่สีเขียวให้น่าอยู่', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Garden' },
+            { id: 'b69', name: 'เบเกอรี่โฮมเมด', type: 'ทั่วไป', quantity: 6, available: 6, description: 'สูตรขนมทำขายได้จริง', imageUrl: 'https://placehold.co/100x150/F472B6/ffffff?text=Bakery' },
+            { id: 'b86', name: 'National Geographic ฉบับภาษาไทย', type: 'ทั่วไป', quantity: 5, available: 5, description: 'นิตยสารสารคดี', imageUrl: 'https://placehold.co/100x150/FCD34D/ffffff?text=Nat+Geo' },
+            { id: 'b87', name: 'บ้านและสวน', type: 'ทั่วไป', quantity: 5, available: 5, description: 'ไอเดียแต่งบ้าน', imageUrl: 'https://placehold.co/100x150/10B981/ffffff?text=Home+Garden' },
+            { id: 'b88', name: 'ชีวจิต', type: 'ทั่วไป', quantity: 5, available: 5, description: 'นิตยสารสุขภาพ', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Health' },
+            { id: 'b127', name: 'คู่มือท่องเที่ยวญี่ปุ่น', type: 'ทั่วไป', quantity: 5, available: 5, description: 'Tokyo, Osaka, Hokkaido', imageUrl: 'https://placehold.co/100x150/EF4444/ffffff?text=Japan' },
+            { id: 'b128', name: 'คู่มือท่องเที่ยวเกาหลี', type: 'ทั่วไป', quantity: 5, available: 5, description: 'Seoul, Busan, Jeju', imageUrl: 'https://placehold.co/100x150/3B82F6/ffffff?text=Korea' }
+        ];
+
+        // --- Main Component ---
+        const App = () => {
+            // Local Data States
+            const [equipments, setEquipments] = useState([]);
+            const [borrowings, setBorrowings] = useState([]);
+            const [users, setUsers] = useState([]); 
+            const [logs, setLogs] = useState([]); 
+            // Update default site config
+            const [siteConfig, setSiteConfig] = useState({ 
+                title: 'เว็บไซต์ยืมหนังสือ', 
+                subtitle: 'ออนไลน์' 
+            });
+            const [userId, setUserId] = useState('demo-user-id');
+            const [authReady, setAuthReady] = useState(false);
+            const [showWelcome, setShowWelcome] = useState(true);
+            const [showAdminWelcome, setShowAdminWelcome] = useState(false);
+            
+            // App States
+            const [isSimulatedAdmin, setIsSimulatedAdmin] = useState(false);
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [itemToDelete, setItemToDelete] = useState(null); 
+            const [toast, setToast] = useState(null); // Toast state
+            const [borrowModalItem, setBorrowModalItem] = useState(null); // Lifted state for Borrow Modal
+            const [editModalItem, setEditModalItem] = useState(null); // Lifted state for Edit Modal
+            
+            // User Info States
+            const [borrowerName, setBorrowerName] = useState(''); 
+            const [studentId, setStudentId] = useState(''); 
+            const [className, setClassName] = useState('');
+            
+            const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
+
+            // --- Initialization ---
+            useEffect(() => {
+                setTimeout(() => {
+                    const savedEquipments = localStorage.getItem('equipments');
+                    const savedBorrowings = localStorage.getItem('borrowings');
+                    const savedUsers = localStorage.getItem('users');
+                    const savedLogs = localStorage.getItem('systemLogs');
+                    const savedConfig = localStorage.getItem('siteConfig');
+
+                    if (savedEquipments) {
+                        setEquipments(JSON.parse(savedEquipments));
+                    } else {
+                        const defaults = [...SPORTS_EQUIPMENT_DEFAULTS, ...BOOK_DEFAULTS].map(i => ({...i, status: 'ว่าง'}));
+                        setEquipments(defaults);
+                        localStorage.setItem('equipments', JSON.stringify(defaults));
+                    }
+
+                    if (savedBorrowings) {
+                        setBorrowings(JSON.parse(savedBorrowings));
+                    }
+
+                    if (savedUsers) {
+                        setUsers(JSON.parse(savedUsers));
+                    } else if (savedBorrowings) {
+                        const borrowingsData = JSON.parse(savedBorrowings);
+                        const uniqueUsers = {};
+                        borrowingsData.forEach(b => {
+                            if (b.studentId && !uniqueUsers[b.studentId]) {
+                                uniqueUsers[b.studentId] = {
+                                    studentId: b.studentId,
+                                    name: b.borrowerName,
+                                    className: b.className,
+                                    role: 'user',
+                                    status: 'active'
+                                };
+                            }
+                        });
+                        const initialUsers = Object.values(uniqueUsers);
+                        setUsers(initialUsers);
+                        localStorage.setItem('users', JSON.stringify(initialUsers));
+                    }
+
+                    if (savedLogs) {
+                        setLogs(JSON.parse(savedLogs));
+                    }
+
+                    if (savedConfig) {
+                        setSiteConfig(JSON.parse(savedConfig));
+                    }
+
+                    setAuthReady(true);
+                }, 800);
+            }, []);
+
+            // --- Real-time Sync across tabs ---
+            useEffect(() => {
+                const handleStorageChange = (e) => {
+                    // When LocalStorage changes in another tab, update state here
+                    if (e.key === 'borrowings') {
+                        setBorrowings(JSON.parse(e.newValue || '[]'));
+                    } else if (e.key === 'equipments') {
+                        setEquipments(JSON.parse(e.newValue || '[]'));
+                    } else if (e.key === 'users') {
+                        setUsers(JSON.parse(e.newValue || '[]'));
+                    } else if (e.key === 'systemLogs') {
+                        setLogs(JSON.parse(e.newValue || '[]'));
+                    } else if (e.key === 'siteConfig') {
+                        setSiteConfig(JSON.parse(e.newValue || '{}'));
+                    }
+                };
+
+                window.addEventListener('storage', handleStorageChange);
+                return () => window.removeEventListener('storage', handleStorageChange);
+            }, []);
+
+            // --- Show Toast Helper ---
+            const showToast = (message) => {
+                setToast(message);
+                setTimeout(() => setToast(null), 3000);
+            };
+
+            // --- Helper to Save Data ---
+            const saveToLocal = (key, data, silent = false) => {
+                localStorage.setItem(key, JSON.stringify(data));
+                if (key === 'equipments') setEquipments(data);
+                if (key === 'borrowings') setBorrowings(data);
+                if (key === 'users') setUsers(data);
+                if (key === 'systemLogs') setLogs(data);
+                if (key === 'siteConfig') setSiteConfig(data);
+                
+                if (!silent && key !== 'systemLogs') { 
+                    showToast('บันทึกข้อมูลเรียบร้อยแล้ว');
+                }
+            };
+
+            // --- Logger Function ---
+            const addLog = (action, actor, details) => {
+                const newLog = {
+                    id: 'log_' + Date.now(),
+                    timestamp: new Date().toISOString(),
+                    action,
+                    actor,
+                    details
+                };
+                const updatedLogs = [newLog, ...logs].slice(0, 200);
+                saveToLocal('systemLogs', updatedLogs, true); // Silent save for logs
+            };
+
+            const fullBorrowerId = useMemo(() => {
+                const parts = [];
+                if (borrowerName.trim()) parts.push(borrowerName.trim());
+                if (studentId.trim()) parts.push(`รหัส:${studentId.trim()}`);
+                if (className.trim()) parts.push(`ห้อง:${className.trim()}`);
+                return parts.join(' | ');
+            }, [borrowerName, studentId, className]);
+
+            const isUserInfoComplete = borrowerName.trim() && studentId.trim() && className.trim();
+
+            const pendingCount = useMemo(() => {
+                return borrowings.filter(b => b.status === 'รออนุมัติ' || b.status === 'รอการตรวจสอบคืน').length;
+            }, [borrowings]);
+
+            // --- Actions ---
+            const handleAdminLogin = (password, setError) => {
+                if (password === '124') {
+                    setIsSimulatedAdmin(true);
+                    setShowAdminLoginModal(false);
+                    setError('');
+                    addLog('เข้าสู่ระบบ', 'Admin', 'เข้าสู่ระบบผู้ดูแล');
+                    setShowAdminWelcome(true);
+                } else {
+                    setError('รหัสผ่านไม่ถูกต้อง');
+                }
+            };
+
+            const updateSiteConfig = (newConfig) => {
+                saveToLocal('siteConfig', newConfig);
+                // addLog('ตั้งค่าระบบ', 'Admin', 'แก้ไขชื่อ/รายละเอียดเว็บไซต์'); // Optional log
+            };
+
+            const upsertUser = (uId, uName, uClass) => {
+                const existingUser = users.find(u => u.studentId === uId);
+                let newUsersList = [];
+                if (existingUser) {
+                    newUsersList = users.map(u => u.studentId === uId ? { ...u, name: uName, className: uClass } : u);
+                } else {
+                    newUsersList = [...users, { 
+                        studentId: uId, 
+                        name: uName, 
+                        className: uClass, 
+                        role: 'user', 
+                        status: 'active',
+                        joinedDate: new Date().toISOString()
+                    }];
+                }
+                saveToLocal('users', newUsersList);
+            };
+
+            const requestBorrow = (equipmentId, qty, dueDate) => {
+                const sId = studentId.trim();
+                const uName = borrowerName.trim();
+                const uClass = className.trim();
+
+                const user = users.find(u => u.studentId === sId);
+                if (user && user.status === 'suspended') {
+                    alert(`❌ ไม่สามารถทำรายการได้\nผู้ใช้รหัส ${sId} ถูกระงับการใช้งาน\nกรุณาติดต่อผู้ดูแลระบบ`);
+                    addLog('พยายามยืม (ถูกระงับ)', uName, `พยายามยืมสินค้า ID: ${equipmentId}`);
+                    return;
+                }
+
+                const updatedEquipments = [...equipments];
+                const equipmentIndex = updatedEquipments.findIndex(e => e.id === equipmentId);
+                if (equipmentIndex === -1) return;
+                const equipment = updatedEquipments[equipmentIndex];
+                if (equipment.available < qty) return;
+
+                upsertUser(sId, uName, uClass);
+
+                const newBorrow = {
+                    id: 'bor_' + Date.now(),
+                    equipmentId,
+                    equipmentName: equipment.name,
+                    userId,
+                    userName: fullBorrowerId,
+                    borrowerName: uName,
+                    studentId: sId,
+                    className: uClass,
+                    borrowDate: new Date().toISOString(),
+                    dueDate: new Date(dueDate).toISOString(),
+                    quantity: Number(qty),
+                    status: 'รออนุมัติ',
+                    returnDate: null
+                };
+
+                const updatedBorrowings = [...borrowings, newBorrow];
+                saveToLocal('borrowings', updatedBorrowings, true); // Silent save here, show custom toast instead
+                showToast('✅ ส่งคำขอยืมเรียบร้อย กรุณารอการอนุมัติ');
+                addLog('ยืมอุปกรณ์', uName, `ขอเช่า ${equipment.name} จำนวน ${qty} ชิ้น`);
+            };
+
+            const toggleUserStatus = (targetStudentId) => {
+                let action = '';
+                const updatedUsers = users.map(u => {
+                    if (u.studentId === targetStudentId) {
+                        const newStatus = u.status === 'active' ? 'suspended' : 'active';
+                        action = newStatus === 'active' ? 'ยกเลิกการระงับ' : 'ระงับผู้ใช้';
+                        return { ...u, status: newStatus };
+                    }
+                    return u;
+                });
+                saveToLocal('users', updatedUsers);
+                addLog(action, 'Admin', `จัดการสถานะผู้ใช้ ${targetStudentId}`);
+            };
+
+            const toggleUserRole = (targetStudentId) => {
+                let role = '';
+                const updatedUsers = users.map(u => {
+                    if (u.studentId === targetStudentId) {
+                        const newRole = u.role === 'admin' ? 'user' : 'admin';
+                        role = newRole;
+                        return { ...u, role: newRole };
+                    }
+                    return u;
+                });
+                saveToLocal('users', updatedUsers);
+                addLog('เปลี่ยนสิทธิ์', 'Admin', `เปลี่ยนสิทธิ์ผู้ใช้ ${targetStudentId} เป็น ${role}`);
+            };
+
+            const approveBorrow = (borrowingId, equipmentId, qty) => {
+                const updatedEquipments = equipments.map(eq => {
+                    if (eq.id === equipmentId) {
+                        const newAvail = eq.available - qty;
+                        return { 
+                            ...eq, 
+                            available: newAvail, 
+                            status: newAvail > 0 ? 'ว่าง' : 'ถูกยืม'
+                        };
+                    }
+                    return eq;
+                });
+
+                const updatedBorrowings = borrowings.map(bor => {
+                    if (bor.id === borrowingId) {
+                        return { ...bor, status: 'อนุมัติ', adminNote: `Approved: ${new Date().toLocaleString()}` };
+                    }
+                    return bor;
+                });
+
+                saveToLocal('equipments', updatedEquipments);
+                saveToLocal('borrowings', updatedBorrowings);
+                addLog('อนุมัติการยืม', 'Admin', `อนุมัติรายการ ID: ${borrowingId}`);
+            };
+
+            const processReturn = (borrowingId, equipmentId, qty) => {
+                const updatedEquipments = equipments.map(eq => {
+                    if (eq.id === equipmentId) {
+                        const newAvail = eq.available + qty;
+                        return { 
+                            ...eq, 
+                            available: newAvail, 
+                            status: newAvail > 0 ? 'ว่าง' : 'ถูกยืม' 
+                        };
+                    }
+                    return eq;
+                });
+
+                const updatedBorrowings = borrowings.map(bor => {
+                    if (bor.id === borrowingId) {
+                        return { 
+                            ...bor, 
+                            status: 'คืนแล้ว', 
+                            returnDate: new Date().toISOString(),
+                            adminNote: `Returned: ${new Date().toLocaleString()}`
+                        };
+                    }
+                    return bor;
+                });
+
+                saveToLocal('equipments', updatedEquipments);
+                saveToLocal('borrowings', updatedBorrowings);
+                addLog('รับคืนอุปกรณ์', 'Admin', `รับคืนรายการ ID: ${borrowingId}`);
+            };
+
+            const cancelBorrow = (borrowingId) => {
+                const updatedBorrowings = borrowings.map(bor => {
+                    if (bor.id === borrowingId) {
+                        return { ...bor, status: 'ยกเลิก', adminNote: 'Cancelled by Admin' };
+                    }
+                    return bor;
+                });
+                saveToLocal('borrowings', updatedBorrowings);
+                addLog('ปฏิเสธ/ยกเลิก', 'Admin', `ยกเลิกรายการ ID: ${borrowingId}`);
+            };
+
+            const signalReturn = (borrowingId) => {
+                const updatedBorrowings = borrowings.map(bor => {
+                    if (bor.id === borrowingId) {
+                        return { ...bor, status: 'รอการตรวจสอบคืน' };
+                    }
+                    return bor;
+                });
+                saveToLocal('borrowings', updatedBorrowings);
+                addLog('แจ้งคืน', 'User', `แจ้งคืนรายการ ID: ${borrowingId}`);
+            };
+
+            // --- Delete Actions ---
+            const promptDeleteLog = (logId) => { setItemToDelete({ type: 'log', id: logId }); };
+            const promptClearLogs = () => { setItemToDelete({ type: 'all_logs' }); };
+            const promptDeleteBorrowing = (borrowingId) => { setItemToDelete({ type: 'borrowing', id: borrowingId }); };
+            const promptDeleteAllHistory = (itemsToDelete) => { setItemToDelete({ type: 'all_history', ids: itemsToDelete }); };
+            const promptDeleteUser = (studentId) => { setItemToDelete({ type: 'user', id: studentId }); };
+            const promptDeleteEquipment = (equipmentId) => { setItemToDelete({ type: 'equipment', id: equipmentId }); };
+            const promptDeleteGroup = (itemsToDelete, type) => { setItemToDelete({ type, ids: itemsToDelete }); };
+
+            const confirmDelete = () => {
+                if (!itemToDelete) return;
+
+                if (itemToDelete.type === 'borrowing') {
+                    const updatedBorrowings = borrowings.filter(bor => bor.id !== itemToDelete.id);
+                    saveToLocal('borrowings', updatedBorrowings);
+                    addLog('ลบประวัติ', isSimulatedAdmin ? 'Admin' : 'User', `ลบรายการยืม ID: ${itemToDelete.id}`);
+                } else if (itemToDelete.type === 'all_history' || itemToDelete.type.startsWith('group_')) {
+                    const idsToDelete = new Set(itemToDelete.ids);
+                    const remaining = borrowings.filter(b => !idsToDelete.has(b.id));
+                    saveToLocal('borrowings', remaining);
+                    addLog('ลบกลุ่มประวัติ', isSimulatedAdmin ? 'Admin' : 'User', `ลบประวัติ ${itemToDelete.ids.length} รายการ`);
+                } else if (itemToDelete.type === 'user') {
+                    const updatedUsers = users.filter(u => u.studentId !== itemToDelete.id);
+                    saveToLocal('users', updatedUsers);
+                    addLog('ลบผู้ใช้', 'Admin', `ลบผู้ใช้รหัส: ${itemToDelete.id}`);
+                } else if (itemToDelete.type === 'log') {
+                    const updatedLogs = logs.filter(l => l.id !== itemToDelete.id);
+                    saveToLocal('systemLogs', updatedLogs);
+                } else if (itemToDelete.type === 'all_logs') {
+                    saveToLocal('systemLogs', []);
+                    setTimeout(() => addLog('ล้างบันทึก', 'Admin', 'ล้างประวัติการใช้งานทั้งหมด'), 100);
+                } else if (itemToDelete.type === 'equipment') {
+                    const item = equipments.find(e => e.id === itemToDelete.id);
+                    const updatedEquipments = equipments.filter(e => e.id !== itemToDelete.id);
+                    saveToLocal('equipments', updatedEquipments);
+                    addLog('ลบอุปกรณ์', 'Admin', `ลบรายการ: ${item ? item.name : itemToDelete.id}`);
+                } else if (itemToDelete.type === 'top_popular') {
+                     // Deleting borrowing history for specific books in Top 5 list
+                     const idsToDelete = new Set(itemToDelete.ids);
+                     const remaining = borrowings.filter(b => !idsToDelete.has(b.id));
+                     saveToLocal('borrowings', remaining);
+                     addLog('รีเซ็ตยอดนิยม', 'Admin', `ลบประวัติการยืมของหนังสือยอดนิยม`);
+                }
+
+                setItemToDelete(null); 
+            };
+
+            const saveEquipment = (data, id = null) => {
+                const payload = {
+                    ...data,
+                    quantity: Number(data.quantity),
+                    available: Number(data.available),
+                    status: Number(data.available) > 0 ? 'ว่าง' : 'ถูกยืม',
+                    imageUrl: data.imageUrl || 'https://placehold.co/100x100/3B82F6/ffffff?text=Item'
+                };
+
+                let updatedEquipments;
+                if (id) {
+                    updatedEquipments = equipments.map(e => e.id === id ? { ...e, ...payload } : e);
+                    addLog('แก้ไขอุปกรณ์', 'Admin', `แก้ไขข้อมูล: ${data.name}`);
+                } else {
+                    updatedEquipments = [...equipments, { id: 'eq_' + Date.now(), ...payload }];
+                    addLog('เพิ่มอุปกรณ์', 'Admin', `เพิ่มใหม่: ${data.name}`);
+                }
+                saveToLocal('equipments', updatedEquipments);
+            };
+            
+            const resetData = () => {
+                if(confirm('คุณต้องการรีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้นหรือไม่? ข้อมูลการยืมและ Logs จะหายไปทั้งหมด')) {
+                    localStorage.removeItem('equipments');
+                    localStorage.removeItem('borrowings');
+                    localStorage.removeItem('users');
+                    localStorage.removeItem('systemLogs');
+                    window.location.reload();
+                }
+            };
+
+            // --- Sub-Components ---
+            
+            const Toast = ({ message }) => (
+                <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-slide-up z-50">
+                    <CheckCircle size={20} className="text-green-400" />
+                    <span>{message}</span>
+                </div>
+            );
+
+            const AdminLoginModal = ({ onLogin, onClose }) => {
+                const [pass, setPass] = useState('');
+                const [err, setErr] = useState('');
+                return (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+                            <h3 className="text-xl font-bold mb-2 text-gray-800">ยินดีต้อนรับผู้ดูแลระบบ</h3>
+                            <p className="text-sm text-gray-500 mb-6">กรุณากรอกรหัสผ่านเพื่อเข้าถึงระบบจัดการ</p>
+                            <input 
+                                type="password" 
+                                value={pass}
+                                onChange={(e) => { setPass(e.target.value); setErr(''); }}
+                                className="w-full p-3 border rounded-xl mb-2"
+                                placeholder="รหัสผ่าน"
+                            />
+                            {err && <p className="text-red-500 text-sm mb-3">{err}</p>}
+                            <div className="flex gap-2">
+                                <button onClick={onClose} className="flex-1 py-2 bg-gray-200 rounded-lg">ยกเลิก</button>
+                                <button onClick={() => onLogin(pass, setErr)} className="flex-1 py-2 bg-blue-600 text-white rounded-lg">ยืนยัน</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const AdminWelcomeModal = ({ onClose }) => (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] animate-fade-in">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm mx-4 relative">
+                        <button 
+                            onClick={onClose}
+                            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                        >
+                            &times;
+                        </button>
+                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <ShieldCheck size={32} />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">ยินดีต้อนรับผู้ดูแลระบบ</h2>
+                        <p className="text-gray-600 mb-6">คุณได้เข้าสู่โหมดจัดการระบบเรียบร้อยแล้ว</p>
+                        <button 
+                            onClick={onClose}
+                            className="w-full py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
+                        >
+                            ตกลง
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const WelcomeScreen = ({ onClose }) => (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] animate-fade-in">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md mx-4">
+                        <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <LucideBookOpen size={40} />
+                        </div>
+                        <h1 className="text-2xl font-bold text-gray-800 mb-2">ยินดีต้อนรับ</h1>
+                        <p className="text-gray-600 mb-8">สู่เว็บไซต์ยืม-หนังสือออนไลน์<br/>ระบบจองและจัดการที่มีประสิทธิภาพ</p>
+                        <button 
+                            onClick={onClose}
+                            className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-transform hover:scale-[1.02]"
+                        >
+                            เข้าสู่เว็บไซต์
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const DeleteConfirmModal = ({ item, onConfirm, onCancel }) => (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+                        <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle size={32} />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2 text-gray-800">ยืนยันการลบ</h3>
+                        <p className="text-gray-600 mb-6">
+                            {item.type.startsWith('group_') || item.type === 'all_history' || item.type === 'top_popular'
+                                ? `คุณต้องการลบประวัติจำนวน ${item.ids.length} รายการ ใช่หรือไม่?` 
+                                : item.type === 'user' 
+                                    ? `คุณต้องการลบผู้ใช้รหัส ${item.id} ใช่หรือไม่?`
+                                    : item.type === 'all_logs'
+                                        ? 'คุณต้องการล้างบันทึกการใช้งานทั้งหมดใช่หรือไม่?'
+                                        : item.type === 'equipment'
+                                            ? 'คุณต้องการลบอุปกรณ์นี้ใช่หรือไม่?'
+                                            : 'คุณต้องการลบรายการนี้ใช่หรือไม่?'}
+                            <br/><span className="text-xs text-red-500">การกระทำนี้ไม่สามารถเรียกคืนได้</span>
+                        </p>
+                        <div className="flex gap-3">
+                            <button onClick={onCancel} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium">ยกเลิก</button>
+                            <button onClick={onConfirm} className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md">ลบถาวร</button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const NavButton = ({ id, icon: Icon, label, badge }) => (
+                <button 
+                    onClick={() => setCurrentView(id)}
+                    className={`relative flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        currentView === id ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                    <Icon size={18} />
+                    <span className="hidden sm:inline">{label}</span>
+                    {badge > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm animate-badge">
+                            {badge > 99 ? '99+' : badge}
+                        </span>
+                    )}
+                </button>
+            );
+
+            // Borrow Modal Component
+            const BorrowModal = ({ item, onClose, onConfirm }) => {
+                const [qty, setQty] = useState(1);
+                const [dueDate, setDueDate] = useState('');
+                
+                useEffect(() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 7);
+                    // Local timezone adjust
+                    const offset = d.getTimezoneOffset() * 60000;
+                    setDueDate(new Date(d - offset).toISOString().slice(0, 16));
+                }, []);
+
+                return (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                            <h3 className="text-xl font-bold mb-4">ขอยืม: {item.name}</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">กำหนดคืน</label>
+                                    <input 
+                                        type="datetime-local" 
+                                        value={dueDate}
+                                        onChange={e => setDueDate(e.target.value)}
+                                        className="w-full p-2 border rounded-lg"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">จำนวน (เหลือ {item.available})</label>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max={item.available} 
+                                        value={qty} 
+                                        onChange={e => setQty(Math.min(item.available, Math.max(1, Number(e.target.value))))}
+                                        className="w-full p-2 border rounded-lg"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-2 mt-6">
+                                <button onClick={onClose} className="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">ยกเลิก</button>
+                                <button 
+                                    onClick={() => onConfirm(qty, dueDate)} 
+                                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                >
+                                    ยืนยัน
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const EditEquipmentModal = ({ item, onClose, onSave }) => {
+                const [formData, setFormData] = useState(item);
+
+                const handleImageUpload = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        if (file.size > 500000) {
+                            alert('กรุณาใช้รูปภาพขนาดไม่เกิน 500KB');
+                            return;
+                        }
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            setFormData({ ...formData, imageUrl: reader.result });
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    onSave(formData);
+                };
+
+                return (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto scrollbar-hide">
+                            <h3 className="text-xl font-bold mb-4">{item.id === 'new' ? 'เพิ่มรายการ' : 'แก้ไขรายการ'}</h3>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                
+                                {/* Image Upload / Preview Section */}
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-gray-700">รูปภาพอุปกรณ์</label>
+                                    <div className="flex gap-4 items-start">
+                                        <div className="w-24 h-24 bg-gray-100 rounded-lg border flex items-center justify-center overflow-hidden shrink-0 relative group">
+                                            <img 
+                                                src={formData.imageUrl || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Img'} 
+                                                alt="Preview" 
+                                                className="w-full h-full object-contain"
+                                                onError={(e) => e.target.src = 'https://placehold.co/100x100/e2e8f0/64748b?text=Error'} 
+                                            />
+                                            {/* Upload Overlay */}
+                                            <label className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                <Upload size={20} />
+                                                <span className="text-[10px] mt-1">เปลี่ยนรูป</span>
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                                            </label>
+                                        </div>
+                                        <div className="flex-grow space-y-2">
+                                            <input 
+                                                className="w-full border p-2 rounded text-sm" 
+                                                value={formData.imageUrl} 
+                                                onChange={e => setFormData({...formData, imageUrl: e.target.value})} 
+                                                placeholder="วางลิงก์รูปภาพ (URL)"
+                                            />
+                                            <p className="text-xs text-gray-500">
+                                                * อัปโหลดรูป (ไม่เกิน 500KB) โดยคลิกที่รูปด้านซ้าย หรือวาง URL ในช่องว่าง
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm mb-1">ชื่อ</label>
+                                        <input className="w-full border p-2 rounded" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm mb-1">ประเภท</label>
+                                        <input 
+                                            className="w-full border p-2 rounded" 
+                                            list="typeOptions" 
+                                            value={formData.type} 
+                                            onChange={e => setFormData({...formData, type: e.target.value})} 
+                                            placeholder="เลือกหรือพิมพ์เอง" 
+                                            required 
+                                        />
+                                        <datalist id="typeOptions">
+                                            <option value="แบบเรียน" />
+                                            <option value="วรรณกรรม" />
+                                            <option value="เทคโนโลยี" />
+                                            <option value="พัฒนาตนเอง" />
+                                            <option value="การ์ตูนความรู้" />
+                                            <option value="ทั่วไป" />
+                                            <option value="ประวัติศาสตร์" />
+                                            <option value="นิยายสืบสวน" />
+                                            <option value="นิยายจีน" />
+                                            <option value="สุขภาพ" />
+                                        </datalist>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm mb-1">จำนวนทั้งหมด</label>
+                                        <input type="number" className="w-full border p-2 rounded" required value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm mb-1">คงเหลือ</label>
+                                        <input type="number" className="w-full border p-2 rounded" required value={formData.available} onChange={e => setFormData({...formData, available: e.target.value})} />
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm mb-1">รายละเอียด</label>
+                                    <textarea className="w-full border p-2 rounded" rows="2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                                </div>
+                                <div className="flex gap-2 pt-4 border-t mt-4">
+                                    <button type="button" onClick={onClose} className="flex-1 py-2 bg-gray-100 rounded-lg text-gray-700 hover:bg-gray-200">ยกเลิก</button>
+                                    <button type="submit" className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+                                        <LucideSave size={18} /> บันทึกข้อมูล
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- Views ---
+
+            const DashboardView = ({ onBorrow }) => {
+                const [search, setSearch] = useState('');
+                const [filter, setFilter] = useState('ทั้งหมด');
+
+                const uniqueTypes = useMemo(() => {
+                    const types = new Set(equipments.map(e => e.type));
+                    types.add('แบบเรียน');
+                    types.add('วรรณกรรม');
+                    types.add('เทคโนโลยี');
+                    types.add('พัฒนาตนเอง');
+                    types.add('การ์ตูนความรู้');
+                    types.add('ประวัติศาสตร์'); 
+                    types.add('นิยายสืบสวน'); 
+                    types.add('นิยายจีน'); 
+                    types.add('สุขภาพ'); 
+                    return ['ทั้งหมด', ...Array.from(types)].filter(Boolean);
+                }, [equipments]);
+
+                const filtered = equipments.filter(e => {
+                    const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase());
+                    const matchesType = filter === 'ทั้งหมด' || e.type === filter;
+                    return matchesSearch && matchesType;
+                }).sort((a,b) => (b.available > 0) - (a.available > 0)); 
+
+                return (
+                    <div className="space-y-6">
+                        {/* Filters */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4">
+                            <div className="relative flex-grow">
+                                <LucideSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input 
+                                    type="text" 
+                                    placeholder="ค้นหาอุปกรณ์..." 
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <select 
+                                value={filter} 
+                                onChange={(e) => setFilter(e.target.value)}
+                                className="px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                {uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+
+                        {/* Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {filtered.map(item => (
+                                <EquipmentCard key={item.id} item={item} onBorrow={onBorrow} />
+                            ))}
+                            {filtered.length === 0 && (
+                                <div className="col-span-full text-center py-12 text-gray-400">
+                                    ไม่พบรายการที่ค้นหา
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            const EquipmentCard = ({ item, onBorrow }) => {
+                const canBorrow = item.available > 0;
+
+                return (
+                    <>
+                        <div className={`bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col h-full transition-shadow hover:shadow-md ${!canBorrow ? 'opacity-70' : ''}`}>
+                            <div className="relative aspect-video bg-gray-100">
+                                <img 
+                                    src={item.imageUrl} 
+                                    alt={item.name}
+                                    className="w-full h-full object-contain p-4"
+                                    onError={(e) => e.target.src = 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}
+                                />
+                                <span className={`absolute top-2 right-2 px-2 py-1 text-xs font-bold rounded-full ${canBorrow ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {canBorrow ? `ว่าง ${item.available}` : 'หมด'}
+                                </span>
+                            </div>
+                            <div className="p-4 flex-grow flex flex-col">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 line-clamp-1">{item.name}</h3>
+                                        <p className="text-xs text-gray-500">{item.type}</p>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-grow">{item.description}</p>
+                                <button 
+                                    onClick={() => onBorrow(item)}
+                                    disabled={!canBorrow || !isUserInfoComplete}
+                                    className={`w-full py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                        !isUserInfoComplete 
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : canBorrow 
+                                                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                    }`}
+                                >
+                                    {!isUserInfoComplete ? 'กรอกข้อมูลผู้ยืมก่อน' : canBorrow ? 'ยืมรายการนี้' : 'ของหมด'}
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                );
+            };
+
+            const HistoryView = () => {
+                const [search, setSearch] = useState('');
+
+                // --- เพิ่มการตรวจสอบ: ถ้าไม่ใช่ Admin และข้อมูลไม่ครบ ให้แสดงข้อความเตือน ---
+                if (!isSimulatedAdmin && !isUserInfoComplete) {
+                    return (
+                        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 text-center animate-fade-in">
+                            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                <LucideUser size={40} className="text-gray-400" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-700 mb-2">กรุณาระบุตัวตน</h3>
+                            <p className="text-gray-500 max-w-md">
+                                กรุณากรอก <b>ชื่อ-นามสกุล</b>, <b>รหัสนักศึกษา</b> และ <b>ห้อง/แผนก</b> <br/>
+                                ในกล่องข้อมูลด้านบนให้ครบถ้วน เพื่อค้นหาและแสดงประวัติการยืมของคุณ
+                            </p>
+                        </div>
+                    );
+                }
+                
+                const list = useMemo(() => {
+                    let res = borrowings;
+                    if (!isSimulatedAdmin) {
+                        const filterName = borrowerName.trim().toLowerCase();
+                        const filterId = studentId.trim().toLowerCase();
+
+                        if (filterName || filterId) {
+                            res = res.filter(b => {
+                                const bName = (b.borrowerName || '').toLowerCase();
+                                const bId = (b.studentId || '').toLowerCase();
+                                const nameMatch = filterName && bName.includes(filterName);
+                                const idMatch = filterId && bId.includes(filterId);
+                                return nameMatch || idMatch;
+                            });
+                        } else {
+                            // กรณีนี้จะไม่เกิดขึ้นแล้วเพราะมี check ด้านบน แต่ใส่กันไว้
+                            res = res.filter(b => b.userId === userId); 
+                        }
+                    } else if (search) {
+                        const lower = search.toLowerCase();
+                        res = res.filter(b => 
+                            b.userName?.toLowerCase().includes(lower) || 
+                            b.equipmentName?.toLowerCase().includes(lower)
+                        );
+                    }
+                    return res.sort((a,b) => new Date(b.borrowDate) - new Date(a.borrowDate));
+                }, [borrowings, userId, isSimulatedAdmin, search, borrowerName, studentId]); 
+
+                const handleClearHistory = () => {
+                    const idsToDelete = list.map(b => b.id);
+                    promptDeleteAllHistory(idsToDelete);
+                };
+
+                return (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center flex-wrap gap-4">
+                            <h2 className="text-2xl font-bold text-gray-800">
+                                {isSimulatedAdmin ? 'ประวัติการยืมทั้งหมด' : 'ประวัติการยืม (Local Mode)'}
+                            </h2>
+                            {list.length > 0 && (
+                                <button 
+                                    onClick={handleClearHistory}
+                                    className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                                >
+                                    <LucideTrash size={16} /> ล้างประวัติทั้งหมด
+                                </button>
+                            )}
+                        </div>
+                        
+                        {isSimulatedAdmin && (
+                            <div className="relative">
+                                <LucideSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                <input 
+                                    type="text" 
+                                    placeholder="ค้นหาตามชื่อ หรือ อุปกรณ์..." 
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full pl-10 p-2 border rounded-lg"
+                                />
+                            </div>
+                        )}
+
+                        <div className="space-y-3">
+                            {list.length === 0 && <p className="text-center text-gray-500 py-8">ไม่พบประวัติการยืมที่ตรงกับข้อมูลของคุณ</p>}
+                            {list.map(b => {
+                                const isOverdue = b.status === 'อนุมัติ' && new Date(b.dueDate) < new Date();
+                                return (
+                                    <div key={b.id} className={`bg-white p-4 rounded-xl border shadow-sm flex flex-col md:flex-row justify-between gap-4 ${isOverdue ? 'border-red-200 bg-red-50' : ''}`}>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-bold text-gray-800">{b.equipmentName} ({b.quantity})</h3>
+                                                <span className={`px-2 py-0.5 text-xs rounded-full border ${
+                                                    b.status === 'อนุมัติ' ? 'bg-green-100 text-green-700 border-green-200' :
+                                                    b.status === 'คืนแล้ว' ? 'bg-gray-100 text-gray-700 border-gray-200' :
+                                                    b.status === 'รออนุมัติ' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                                                    'bg-red-100 text-red-700 border-red-200'
+                                                }`}>{b.status}</span>
+                                                {isOverdue && <span className="px-2 py-0.5 text-xs rounded-full bg-red-600 text-white animate-pulse">เกินกำหนด</span>}
+                                            </div>
+                                            <p className="text-sm text-gray-600">ผู้ยืม: {b.userName}</p>
+                                            <div className="flex gap-4 text-xs text-gray-500 mt-2">
+                                                <span>ยืม: {new Date(b.borrowDate).toLocaleDateString()}</span>
+                                                <span>กำหนด: {new Date(b.dueDate).toLocaleString()}</span>
+                                                {b.returnDate && <span className="text-green-600">คืน: {new Date(b.returnDate).toLocaleDateString()}</span>}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {!isSimulatedAdmin && b.status === 'อนุมัติ' && (
+                                                <button 
+                                                    onClick={() => signalReturn(b.id)}
+                                                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 whitespace-nowrap"
+                                                >
+                                                    แจ้งคืน
+                                                </button>
+                                            )}
+                                            {/* Delete Button enabled for everyone */}
+                                            <button 
+                                                onClick={() => promptDeleteBorrowing(b.id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="ลบประวัติ"
+                                            >
+                                                <LucideTrash size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            };
+
+            const AdminUsersView = () => {
+                const [searchTerm, setSearchTerm] = useState('');
+
+                const filteredUsers = users.filter(u => 
+                    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    u.studentId.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+
+                return (
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold text-gray-800">จัดการผู้ใช้งาน</h2>
+                        
+                        <div className="relative">
+                            <LucideSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input 
+                                type="text" 
+                                placeholder="ค้นหาชื่อ หรือ รหัสนักศึกษา..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 p-2 border rounded-lg"
+                            />
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border overflow-hidden overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-500 font-medium">
+                                    <tr>
+                                        <th className="p-4">ชื่อ-นามสกุล</th>
+                                        <th className="p-4">รหัส</th>
+                                        <th className="p-4">ห้อง/แผนก</th>
+                                        <th className="p-4 text-center">สถานะ</th>
+                                        <th className="p-4 text-center">สิทธิ์</th>
+                                        <th className="p-4 text-center">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {filteredUsers.map(user => (
+                                        <tr key={user.studentId} className={`hover:bg-gray-50 ${user.status === 'suspended' ? 'bg-red-50' : ''}`}>
+                                            <td className="p-4 font-medium">{user.name}</td>
+                                            <td className="p-4 text-gray-500">{user.studentId}</td>
+                                            <td className="p-4 text-gray-500">{user.className}</td>
+                                            <td className="p-4 text-center">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                    user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                }`}>
+                                                    {user.status === 'active' ? 'ปกติ' : 'ถูกระงับ'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <span className={`flex items-center justify-center gap-1 text-xs ${
+                                                    user.role === 'admin' ? 'text-purple-600 font-bold' : 'text-gray-600'
+                                                }`}>
+                                                    {user.role === 'admin' ? <Shield size={14}/> : <LucideUser size={14}/>}
+                                                    {user.role === 'admin' ? 'ผู้ดูแล' : 'ผู้ยืม'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 flex justify-center gap-2">
+                                                <button 
+                                                    onClick={() => toggleUserStatus(user.studentId)}
+                                                    className={`p-2 rounded-lg transition-colors ${
+                                                        user.status === 'active' 
+                                                            ? 'text-red-500 hover:bg-red-100' 
+                                                            : 'text-green-500 hover:bg-green-100'
+                                                    }`}
+                                                    title={user.status === 'active' ? "ระงับการใช้งาน" : "ยกเลิกการระงับ"}
+                                                >
+                                                    {user.status === 'active' ? <UserX size={18} /> : <UserCheck size={18} />}
+                                                </button>
+                                                <button 
+                                                    onClick={() => toggleUserRole(user.studentId)}
+                                                    className={`p-2 rounded-lg transition-colors ${
+                                                        user.role === 'user' 
+                                                            ? 'text-purple-500 hover:bg-purple-100' 
+                                                            : 'text-gray-500 hover:bg-gray-100'
+                                                    }`}
+                                                    title={user.role === 'user' ? "ตั้งเป็นผู้ดูแล" : "ลดระดับเป็นผู้ยืม"}
+                                                >
+                                                    <ShieldAlert size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => promptDeleteUser(user.studentId)}
+                                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="ลบผู้ใช้"
+                                                >
+                                                    <LucideTrash size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredUsers.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" className="p-8 text-center text-gray-400">ไม่พบข้อมูลผู้ใช้</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                );
+            };
+
+            const AdminManageView = ({ onEdit }) => {
+                const [tempConfig, setTempConfig] = useState(siteConfig);
+
+                const handleDelete = async (id) => {
+                    promptDeleteEquipment(id); 
+                };
+
+                const handleConfigBlur = () => {
+                    if (tempConfig.title !== siteConfig.title || tempConfig.subtitle !== siteConfig.subtitle) {
+                        updateSiteConfig(tempConfig);
+                    }
+                };
+
+                const handleSaveConfig = (e) => {
+                    e.preventDefault();
+                    updateSiteConfig(tempConfig);
+                    alert('บันทึกการตั้งค่าเรียบร้อย');
+                };
+
+                return (
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold text-gray-800">จัดการระบบและอุปกรณ์</h2>
+
+                        {/* System Settings Section with Auto-Save */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <LucideSettings size={20} className="text-blue-600" /> ตั้งค่าชื่อเว็บไซต์
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อระบบ (Title)</label>
+                                    <input 
+                                        className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                                        value={tempConfig.title} 
+                                        onChange={e => setTempConfig({...tempConfig, title: e.target.value})}
+                                        onBlur={handleConfigBlur}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">คำอธิบาย (Subtitle)</label>
+                                    <input 
+                                        className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                                        value={tempConfig.subtitle} 
+                                        onChange={e => setTempConfig({...tempConfig, subtitle: e.target.value})}
+                                        onBlur={handleConfigBlur}
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">* ระบบจะบันทึกอัตโนมัติเมื่อพิมพ์เสร็จ</p>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-4 border-t">
+                            <h3 className="text-lg font-bold text-gray-800">รายการอุปกรณ์</h3>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={resetData}
+                                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium flex items-center gap-1"
+                                >
+                                    <LucideDatabase size={14}/> รีเซ็ตข้อมูล
+                                </button>
+                                <button 
+                                    onClick={() => onEdit({ id: 'new', name: '', type: 'แบบเรียน', quantity: 1, available: 1, description: '', imageUrl: '' })}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                                >
+                                    + เพิ่มรายการ
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-500 font-medium">
+                                    <tr>
+                                        <th className="p-4">รูปภาพ</th>
+                                        <th className="p-4">ชื่อ</th>
+                                        <th className="p-4">ประเภท</th>
+                                        <th className="p-4 text-center">คงเหลือ/ทั้งหมด</th>
+                                        <th className="p-4 text-right">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {equipments.map(item => (
+                                        <tr key={item.id} className="hover:bg-gray-50">
+                                            <td className="p-4">
+                                                <img 
+                                                    src={item.imageUrl} 
+                                                    alt={item.name} 
+                                                    className="w-10 h-10 object-cover rounded bg-gray-100"
+                                                    onError={(e) => e.target.src = 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Img'}
+                                                />
+                                            </td>
+                                            <td className="p-4 font-medium">{item.name}</td>
+                                            <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-xs">{item.type}</span></td>
+                                            <td className="p-4 text-center">
+                                                <span className={item.available > 0 ? 'text-green-600 font-bold' : 'text-red-500'}>
+                                                    {item.available}
+                                                </span>
+                                                <span className="text-gray-400"> / {item.quantity}</span>
+                                            </td>
+                                            <td className="p-4 text-right space-x-2">
+                                                <button onClick={() => onEdit(item)} className="text-blue-600 hover:underline">แก้ไข</button>
+                                                <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline">ลบ</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- New: Security & Logs View ---
+            const AdminSecurityView = () => {
+                const fileInputRef = useRef(null);
+
+                const handleBackup = () => {
+                    const data = {
+                        equipments, borrowings, users, systemLogs: logs, siteConfig
+                    };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `backup-equipment-system-${new Date().toISOString().slice(0,10)}.json`;
+                    a.click();
+                    addLog('Backup', 'Admin', 'ดาวน์โหลดไฟล์สำรองข้อมูล');
+                };
+
+                const handleRestoreClick = () => {
+                    fileInputRef.current.click();
+                };
+
+                const handleFileChange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            if (confirm('คำเตือน: การกู้คืนข้อมูลจะทับข้อมูลปัจจุบันทั้งหมด คุณแน่ใจหรือไม่?')) {
+                                if(data.equipments) saveToLocal('equipments', data.equipments);
+                                if(data.borrowings) saveToLocal('borrowings', data.borrowings);
+                                if(data.users) saveToLocal('users', data.users);
+                                if(data.systemLogs) saveToLocal('systemLogs', data.systemLogs);
+                                if(data.siteConfig) saveToLocal('siteConfig', data.siteConfig);
+                                alert('กู้คืนข้อมูลสำเร็จ! ระบบจะรีโหลด');
+                                window.location.reload();
+                            }
+                        } catch (err) {
+                            alert('ไฟล์ไม่ถูกต้อง กรุณาใช้ไฟล์ JSON ที่ได้จากการ Backup เท่านั้น');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+
+                return (
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold text-gray-800">ความปลอดภัยและบันทึก</h2>
+
+                        {/* Backup & Restore */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
+                                <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                    <DatabaseIcon size={20} className="text-blue-600"/> สำรองข้อมูล (Backup)
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-4">ดาวน์โหลดข้อมูลทั้งหมดในระบบเก็บไว้เป็นไฟล์ .json</p>
+                                <button onClick={handleBackup} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+                                    <Download size={18}/> ดาวน์โหลด Backup
+                                </button>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-orange-100">
+                                <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                    <Upload size={20} className="text-orange-600"/> กู้คืนข้อมูล (Restore)
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-4">อัปโหลดไฟล์ Backup เพื่อกู้คืนข้อมูล (ข้อมูลปัจจุบันจะถูกทับ)</p>
+                                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+                                <button onClick={handleRestoreClick} className="w-full py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center justify-center gap-2">
+                                    <Upload size={18}/> อัปโหลดไฟล์กู้คืน
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Logs Table */}
+                        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                                <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                                    <FileText size={18}/> บันทึกการใช้งาน (System Logs)
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500">แสดง 200 รายการล่าสุด</span>
+                                    {logs.length > 0 && (
+                                        <button 
+                                            onClick={promptClearLogs}
+                                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="ล้างบันทึกทั้งหมด"
+                                        >
+                                            <LucideTrash size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto max-h-[500px]">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-100 text-gray-600 sticky top-0">
+                                        <tr>
+                                            <th className="p-3">เวลา</th>
+                                            <th className="p-3">ผู้ทำรายการ</th>
+                                            <th className="p-3">กิจกรรม</th>
+                                            <th className="p-3">รายละเอียด</th>
+                                            <th className="p-3 text-right">จัดการ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {logs.length === 0 && (
+                                            <tr><td colSpan="5" className="p-8 text-center text-gray-400">ยังไม่มีบันทึก</td></tr>
+                                        )}
+                                        {logs.map(log => (
+                                            <tr key={log.id} className="hover:bg-gray-50">
+                                                <td className="p-3 text-gray-500 whitespace-nowrap">
+                                                    {new Date(log.timestamp).toLocaleString()}
+                                                </td>
+                                                <td className="p-3 font-medium">{log.actor}</td>
+                                                <td className="p-3">
+                                                    <span className="px-2 py-1 bg-gray-100 rounded-md text-xs border border-gray-200">
+                                                        {log.action}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-gray-600">{log.details}</td>
+                                                <td className="p-3 text-right">
+                                                    <button 
+                                                        onClick={() => promptDeleteLog(log.id)}
+                                                        className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors"
+                                                        title="ลบรายการนี้"
+                                                    >
+                                                        <LucideTrash size={14} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+            const DatabaseIcon = LucideDatabase; 
+
+            const AdminApproveView = () => {
+                const pending = borrowings.filter(b => b.status === 'รออนุมัติ' || b.status === 'รอการตรวจสอบคืน');
+
+                return (
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold text-gray-800">อนุมัติ / ตรวจรับคืน</h2>
+                        {pending.length === 0 && <p className="text-gray-500 text-center py-8">ไม่มีรายการรอดำเนินการ</p>}
+                        
+                        <div className="grid gap-4">
+                            {pending.map(b => (
+                                <div key={b.id} className="bg-white p-4 rounded-xl shadow-sm border border-l-4 border-l-blue-500 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-bold text-gray-800">{b.equipmentName} ({b.quantity})</h3>
+                                            <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full">{b.status}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mt-1">ผู้ยืม: <span className="font-semibold">{b.userName}</span></p>
+                                        <p className="text-xs text-gray-400 mt-1">วันที่ยืม: {new Date(b.borrowDate).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        {b.status === 'รออนุมัติ' ? (
+                                            <>
+                                                <button onClick={() => approveBorrow(b.id, b.equipmentId, b.quantity)} className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">อนุมัติ</button>
+                                                <button onClick={() => cancelBorrow(b.id)} className="px-4 py-2 bg-red-100 text-red-600 text-sm rounded-lg hover:bg-red-200">ปฏิเสธ</button>
+                                            </>
+                                        ) : (
+                                            <button onClick={() => processReturn(b.id, b.equipmentId, b.quantity)} className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">ยืนยันรับคืน</button>
+                                        )}
+                                        {/* Admin Delete Button */}
+                                        <button 
+                                            onClick={() => promptDeleteBorrowing(b.id)}
+                                            className="p-2 ml-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="ลบรายการ"
+                                        >
+                                            <LucideTrash size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            const ReportsView = () => {
+                const stats = useMemo(() => {
+                    const totalBorrows = borrowings.length;
+                    const overdue = borrowings.filter(b => b.status === 'อนุมัติ' && new Date(b.dueDate) < new Date()).length;
+                    
+                    // Popular items
+                    const popular = borrowings.reduce((acc, curr) => {
+                        acc[curr.equipmentName] = (acc[curr.equipmentName] || 0) + curr.quantity;
+                        return acc;
+                    }, {});
+                    const sortedPopular = Object.entries(popular)
+                        .map(([name, count]) => {
+                            // Find all IDs associated with this book name
+                            const ids = borrowings.filter(b => b.equipmentName === name).map(b => b.id);
+                            return { name, count, ids };
+                        })
+                        .sort((a,b) => b.count - a.count)
+                        .slice(0, 5);
+
+                    // --- 1. Yearly Stats (Detailed) ---
+                    const yearly = borrowings.reduce((acc, curr) => {
+                        const date = new Date(curr.borrowDate);
+                        const year = date.getFullYear() + 543; 
+                        const key = `ปี ${year}`;
+                        
+                        if (!acc[key]) {
+                            acc[key] = { count: 0, details: [], ids: [] };
+                        }
+                        acc[key].count += 1;
+                        acc[key].ids.push(curr.id); // Collect IDs for group deletion
+                        acc[key].details.push({
+                            book: curr.equipmentName,
+                            borrower: curr.borrowerName || 'ไม่ระบุชื่อ',
+                            displayDate: date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
+                            timestamp: date.getTime()
+                        });
+                        return acc;
+                    }, {});
+                    const sortedYearly = Object.entries(yearly)
+                        .map(([key, val]) => {
+                            val.details.sort((a, b) => b.timestamp - a.timestamp);
+                            return { label: key, ...val };
+                        })
+                        .sort((a, b) => b.label.localeCompare(a.label));
+
+                    // --- 2. Monthly Stats (Detailed) ---
+                    const monthly = borrowings.reduce((acc, curr) => {
+                        const date = new Date(curr.borrowDate);
+                        const key = date.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
+                        const sortKey = date.getFullYear() * 100 + (date.getMonth() + 1);
+                        
+                        if (!acc[key]) {
+                            acc[key] = { count: 0, sort: sortKey, details: [], ids: [] };
+                        }
+                        acc[key].count += 1;
+                        acc[key].ids.push(curr.id); // Collect IDs
+                        acc[key].details.push({
+                            book: curr.equipmentName,
+                            borrower: curr.borrowerName || 'ไม่ระบุชื่อ',
+                            displayDate: date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }),
+                            timestamp: date.getTime()
+                        });
+                        return acc;
+                    }, {});
+                    const sortedMonthly = Object.entries(monthly)
+                        .map(([key, val]) => {
+                            val.details.sort((a, b) => b.timestamp - a.timestamp);
+                            return { label: key, ...val };
+                        })
+                        .sort((a, b) => b.sort - a.sort);
+
+                    // --- 3. Daily Stats (Detailed) ---
+                    const daily = borrowings.reduce((acc, curr) => {
+                        const date = new Date(curr.borrowDate);
+                        const sortKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
+                        const label = date.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' });
+                        
+                        if (!acc[sortKey]) {
+                            acc[sortKey] = { count: 0, label, sortKey, details: [], ids: [] };
+                        }
+                        acc[sortKey].count += 1;
+                        acc[sortKey].ids.push(curr.id); // Collect IDs
+                        acc[sortKey].details.push({
+                            book: curr.equipmentName,
+                            borrower: curr.borrowerName || 'ไม่ระบุชื่อ',
+                            time: date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+                            timestamp: date.getTime()
+                        });
+                        return acc;
+                    }, {});
+                    const sortedDaily = Object.entries(daily)
+                        .sort((a, b) => b[0].localeCompare(a[0])) // Sort by YYYY-MM-DD desc
+                        .map(([key, val]) => {
+                             val.details.sort((a, b) => b.timestamp - a.timestamp); // Sort details newest first
+                             return val;
+                        })
+                        .slice(0, 7); // Show last 7 active days
+
+                    return { totalBorrows, overdue, sortedPopular, sortedMonthly, sortedYearly, sortedDaily };
+                }, [borrowings]);
+
+                return (
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold text-gray-800">รายงานสรุป</h2>
+                        
+                        {/* KPI Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
+                                <h3 className="text-lg font-semibold text-blue-800 mb-2">สถิติรวม</h3>
+                                <p className="text-3xl font-bold text-blue-600">{stats.totalBorrows} <span className="text-sm font-normal text-gray-600">รายการยืมทั้งหมด</span></p>
+                            </div>
+                            <div className="bg-red-50 p-6 rounded-xl border border-red-100">
+                                <h3 className="text-lg font-semibold text-red-800 mb-2">เกินกำหนดคืน</h3>
+                                <p className="text-3xl font-bold text-red-600">{stats.overdue} <span className="text-sm font-normal text-gray-600">รายการ</span></p>
+                            </div>
+                        </div>
+
+                        {/* Top Row: Yearly & Daily */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Yearly Stats (Detailed) */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border">
+                                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <LucideBookOpen size={20} className="text-orange-500"/> สถิติรายปี (Yearly)
+                                </h3>
+                                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {stats.sortedYearly.length === 0 && <p className="text-gray-400 text-sm">ไม่มีข้อมูล</p>}
+                                    {stats.sortedYearly.map((item) => (
+                                        <div key={item.label} className="border rounded-lg p-3 bg-orange-50">
+                                            <div className="flex justify-between items-center mb-3 border-b border-orange-200 pb-2 sticky top-0 bg-orange-50 z-10">
+                                                <span className="text-gray-800 font-bold text-sm">{item.label}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="bg-white text-orange-600 px-2 py-0.5 rounded text-xs font-bold shadow-sm">
+                                                        {item.count} รายการ
+                                                    </span>
+                                                    <button 
+                                                        onClick={() => promptDeleteGroup(item.ids, 'group_year')}
+                                                        className="p-1 text-gray-400 hover:text-red-500 bg-white rounded shadow-sm hover:shadow transition-colors"
+                                                        title="ลบประวัติปีนี้"
+                                                    >
+                                                        <LucideTrash size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <ul className="space-y-2">
+                                                {item.details.map((detail, idx) => (
+                                                    <li key={idx} className="text-xs text-gray-600 py-1.5 border-b border-orange-100 last:border-0 hover:bg-white/50 rounded px-1 transition-colors">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded text-[10px] font-mono mr-2">
+                                                                {detail.displayDate}
+                                                            </span>
+                                                            <span className="text-gray-500 text-[10px]">ผู้ยืม: {detail.borrower}</span>
+                                                        </div>
+                                                        <div className="font-medium text-gray-800 pl-1">
+                                                            📖 {detail.book}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Daily Stats (Detailed) */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border">
+                                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <FileText size={20} className="text-green-500"/> สถิติรายวัน (7 วันล่าสุด)
+                                </h3>
+                                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {stats.sortedDaily.length === 0 && <p className="text-gray-400 text-sm">ไม่มีข้อมูล</p>}
+                                    {stats.sortedDaily.map((item) => (
+                                        <div key={item.sortKey} className="border rounded-lg p-3 bg-green-50">
+                                            <div className="flex justify-between items-center mb-3 border-b border-green-200 pb-2 sticky top-0 bg-green-50 z-10">
+                                                <span className="text-gray-800 font-bold text-sm">{item.label}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="bg-white text-green-600 px-2 py-0.5 rounded text-xs font-bold shadow-sm">
+                                                        {item.count} ครั้ง
+                                                    </span>
+                                                    <button 
+                                                        onClick={() => promptDeleteGroup(item.ids, 'group_day')}
+                                                        className="p-1 text-gray-400 hover:text-red-500 bg-white rounded shadow-sm hover:shadow transition-colors"
+                                                        title="ลบประวัติวันนี้"
+                                                    >
+                                                        <LucideTrash size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <ul className="space-y-2">
+                                                {item.details.map((detail, idx) => (
+                                                    <li key={idx} className="text-xs text-gray-600 py-1.5 border-b border-green-100 last:border-0 hover:bg-white/50 rounded px-1 transition-colors">
+                                                        <div className="flex justify-between mb-1">
+                                                            <span className="font-medium text-gray-700 truncate pr-2">📖 {detail.book}</span>
+                                                            <span className="text-gray-400 text-[10px]">{detail.time} น.</span>
+                                                        </div>
+                                                        <div className="text-gray-500 text-[10px] pl-4 border-l-2 border-green-200">
+                                                            ผู้ยืม: {detail.borrower}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Popular Items */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border">
+                                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <LucideBookOpen size={20} className="text-blue-500"/> 5 อันดับหนังสือยอดนิยม
+                                </h3>
+                                <div className="space-y-3">
+                                    {stats.sortedPopular.length === 0 && <p className="text-gray-400 text-sm">ไม่มีข้อมูล</p>}
+                                    {stats.sortedPopular.map((item, idx) => (
+                                        <div key={item.name} className="flex items-center gap-4 group">
+                                            <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600">{idx + 1}</span>
+                                            <div className="flex-grow">
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span className="font-medium truncate pr-2">{item.name}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-gray-500 text-xs whitespace-nowrap">{item.count} ครั้ง</span>
+                                                        <button 
+                                                            onClick={() => promptDeleteGroup(item.ids, 'top_popular')}
+                                                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            title="รีเซ็ตยอดนิยม"
+                                                        >
+                                                            <LucideTrash size={12} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-blue-500 rounded-full" 
+                                                        style={{ width: `${(item.count / stats.sortedPopular[0].count) * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Monthly Stats (Detailed) */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border">
+                                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <FileText size={20} className="text-purple-500"/> สถิติการยืมรายเดือน
+                                </h3>
+                                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {stats.sortedMonthly.length === 0 && <p className="text-gray-400 text-sm">ไม่มีข้อมูลการยืม</p>}
+                                    {stats.sortedMonthly.map((item) => (
+                                        <div key={item.label} className="border rounded-lg p-3 bg-gray-50">
+                                            <div className="flex justify-between items-center mb-3 border-b border-gray-200 pb-2 bg-white sticky top-0 z-10">
+                                                <span className="text-gray-800 font-bold text-sm">{item.label}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold">
+                                                        {item.count} รายการ
+                                                    </span>
+                                                    <button 
+                                                        onClick={() => promptDeleteGroup(item.ids, 'group_month')}
+                                                        className="p-1 text-gray-400 hover:text-red-500 bg-white rounded shadow-sm hover:shadow transition-colors"
+                                                        title="ลบประวัติเดือนนี้"
+                                                    >
+                                                        <LucideTrash size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <ul className="space-y-2">
+                                                {item.details.map((detail, idx) => (
+                                                    <li key={idx} className="text-xs text-gray-600 py-1.5 border-b border-gray-100 last:border-0 hover:bg-gray-100 rounded px-1 transition-colors">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[10px] font-mono mr-2">
+                                                                {detail.displayDate}
+                                                            </span>
+                                                            <span className="text-gray-500 text-[10px]">ผู้ยืม: {detail.borrower}</span>
+                                                        </div>
+                                                        <div className="font-medium text-gray-800 pl-1">
+                                                            📖 {detail.book}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            if (!authReady) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                        <div className="text-center">
+                            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-gray-500">กำลังโหลดข้อมูลจำลอง...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-slate-50 font-sans text-gray-900 pb-20">
+                    {/* Header */}
+                    <header className="bg-white border-b sticky top-0 z-40 px-4 py-3 shadow-sm">
+                        <div className="max-w-6xl mx-auto flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-blue-600 p-2 rounded-lg text-white">
+                                    <LucideBookOpen size={24} />
+                                </div>
+                                <div>
+                                    <h1 className="font-bold text-lg leading-tight text-blue-900">{siteConfig.title}</h1>
+                                    <p className="text-xs text-slate-500">{siteConfig.subtitle}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                                {isSimulatedAdmin ? (
+                                    <button onClick={() => setIsSimulatedAdmin(false)} className="text-xs text-red-600 font-medium hover:underline flex items-center gap-1">
+                                        <LucideLogOut size={12} /> ออกจากระบบ Admin
+                                    </button>
+                                ) : (
+                                    <button onClick={() => setShowAdminLoginModal(true)} className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1">
+                                        <LucideUser size={12} /> สำหรับเจ้าหน้าที่
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="max-w-6xl mx-auto p-4 sm:p-6">
+                        
+                        {/* User Info Card (Only for non-admin) */}
+                        {!isSimulatedAdmin && (
+                            <div className={`bg-white rounded-xl shadow-sm border p-4 mb-6 transition-colors ${!isUserInfoComplete ? 'border-orange-200 bg-orange-50' : 'border-gray-200'}`}>
+                                <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    <LucideUser size={16} /> ข้อมูลผู้ยืม {isUserInfoComplete ? <span className="text-green-600 text-xs font-normal">(ครบถ้วน)</span> : <span className="text-red-500 text-xs font-normal">* จำเป็น</span>}
+                                </h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <input 
+                                        type="text" 
+                                        placeholder="ชื่อ-นามสกุล" 
+                                        className="border p-2 rounded-lg text-sm"
+                                        value={borrowerName}
+                                        onChange={e => setBorrowerName(e.target.value)}
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="รหัสนักศึกษา/พนักงาน" 
+                                        className="border p-2 rounded-lg text-sm"
+                                        value={studentId}
+                                        onChange={e => setStudentId(e.target.value)}
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="ห้อง/แผนก" 
+                                        className="border p-2 rounded-lg text-sm"
+                                        value={className}
+                                        onChange={e => setClassName(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Navigation Tabs */}
+                        <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
+                            <NavButton id="dashboard" icon={LucideLayoutDashboard} label="ยืมอุปกรณ์" />
+                            <NavButton id="history" icon={LucideHistory} label="ประวัติ" />
+                            {isSimulatedAdmin && (
+                                <>
+                                    <div className="w-px bg-gray-300 mx-2"></div>
+                                    <NavButton id="admin_approve" icon={LucideClipboardList} label="งานอนุมัติ" badge={pendingCount} />
+                                    <NavButton id="admin_manage" icon={LucideSettings} label="จัดการของ" />
+                                    <NavButton id="admin_users" icon={LucideUsers} label="ผู้ใช้งาน" />
+                                    <NavButton id="admin_security" icon={ShieldCheck} label="ความปลอดภัย" />
+                                    <NavButton id="reports" icon={LucideBookOpen} label="รายงาน" />
+                                </>
+                            )}
+                        </div>
+
+                        {/* View Renderer */}
+                        <div className="animate-fade-in">
+                            {currentView === 'dashboard' && <DashboardView onBorrow={setBorrowModalItem} />}
+                            {currentView === 'history' && <HistoryView />}
+                            {currentView === 'admin_manage' && <AdminManageView onEdit={setEditModalItem} />}
+                            {currentView === 'admin_approve' && <AdminApproveView />}
+                            {currentView === 'admin_users' && <AdminUsersView />}
+                            {currentView === 'admin_security' && <AdminSecurityView />}
+                            {currentView === 'reports' && <ReportsView />}
+                        </div>
+
+                    </main>
+
+                    {/* Modals & Toast */}
+                    {showAdminLoginModal && <AdminLoginModal onLogin={handleAdminLogin} onClose={() => setShowAdminLoginModal(false)} />}
+                    {showWelcome && <WelcomeScreen onClose={() => setShowWelcome(false)} />}
+                    {showAdminWelcome && <AdminWelcomeModal onClose={() => setShowAdminWelcome(false)} />}
+                    {itemToDelete && <DeleteConfirmModal item={itemToDelete} onConfirm={confirmDelete} onCancel={() => setItemToDelete(null)} />}
+                    {toast && <Toast message={toast} />}
+
+                    {/* Borrow Modal */}
+                    {borrowModalItem && (
+                        <BorrowModal 
+                            item={borrowModalItem} 
+                            onClose={() => setBorrowModalItem(null)} 
+                            onConfirm={(qty, dueDate) => {
+                                requestBorrow(borrowModalItem.id, qty, dueDate);
+                                setBorrowModalItem(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Edit Modal */}
+                    {editModalItem && (
+                        <EditEquipmentModal 
+                            item={editModalItem} 
+                            onClose={() => setEditModalItem(null)} 
+                            onSave={(data) => {
+                                saveEquipment(data, data.id === 'new' ? null : data.id);
+                                setEditModalItem(null);
+                            }}
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
